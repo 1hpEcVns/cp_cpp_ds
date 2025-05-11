@@ -90,7 +90,7 @@ void pushall(const i32 &x) {
   setfa(x, ff);
   if (fflc == f || ffrc == f)
     fflc != f ? setrc(ff, x) : setlc(ff, x);
-  if (getlc(f) == x) {
+  if (getlc(f) != x) {
     i32 lc = getlc(x);
     setrc(f, lc), setfa(lc, f); 
     setlc(x, f), setfa(f, x);   
@@ -123,7 +123,7 @@ void pushall(const i32 &x) {
 [[gnu::always_inline]] auto splay2root(const i32 &x) { access(x), splay(x); }
 [[gnu::always_inline]] auto mkroot(const i32 &x) { splay2root(x), settag(x); }
 [[gnu::always_inline]] auto expose(const i32 &x, const i32 &y) {
-  splay2root(x), access(y);
+  mkroot(x), splay2root(y);
 }
 [[gnu::always_inline]] auto findfa(i32 x) {
   for (splay2root(x); getlc(x); x = getlc(x))
