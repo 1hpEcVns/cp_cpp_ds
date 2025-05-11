@@ -1,3 +1,4 @@
+// 不要使用位运算压位 特别是在反复取值而且无法并行化的时候就像这样
 #include <cstdint>
 #include <cstdio>
 #include <vector>
