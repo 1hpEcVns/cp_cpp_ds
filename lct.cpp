@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstdio>
+#include <vector>
 
 char buf[100005], *p1 = buf, *p2 = buf;
 char obuf[100005], *p3 = obuf, *p4 = obuf + 35;
@@ -46,7 +47,7 @@ constexpr i32 N = 100001;
 struct Node {
   u64 a;
   i32 val, sum;
-} a[N];
+} *a;
 
 constexpr i32 bitwidth = 20;
 constexpr i32 shiftlc = bitwidth;
@@ -177,6 +178,8 @@ void pushall(const i32 &x) {
 }
 auto main() -> int {
   i32 n = read(), m = read();
+  std::vector<Node> mem(n + 1);
+  a = mem.data();
   for (i32 i = 1; i <= n; ++i)
     a[i].val = read();
   while (m--) {
