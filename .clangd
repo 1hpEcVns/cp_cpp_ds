@@ -1,3 +1,19 @@
 CompileFlags:
   Add: 
-    - "-std=c++23"
+    - "-std=c++17"
+    - "-O2"
+    - "-Wall"
+    - "-Wextra"
+    - "-Wshadow"
+
+Diagnostics:
+  ClangTidy:
+    Add:
+      - abseil-*
+      - llvm-*
+      - modernize-*
+      - performance-*
+      - cppcoreguidelines-*
+      - bugprone-*
+    Remove:
+      - cppcoreguidelines-avoid-magic-numbers
