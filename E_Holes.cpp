@@ -50,15 +50,20 @@ struct iofush { // NOLINT
 #include <ranges>
 #include <vector>
 
-using namespace std;
-using namespace views;
+using std::array;
+using std::sqrt;
+using std::vector;
+using std::views::drop;
+using std::views::iota;
+using std::views::reverse;
 
 auto solve() {
   auto const n = read(), B = static_cast<int>(sqrt(n));
   auto m = read();
   auto a = vector(n + 1, array<int, 4>{});
-  for (auto &i : a | drop(1))
+  for (auto &i : a | drop(1)) {
     i[0] = read();
+  }
   auto const update = [&a, B, n](int const &x) {
     auto &[y, nxt, lst, sum] = a[x];
     if (y > n) {
@@ -69,8 +74,9 @@ auto solve() {
       nxt = y, lst = y, sum = 1;
     }
   };
-  for (auto const i : iota(1, n + 1) | views::reverse)
+  for (auto const i : iota(1, n + 1) | reverse) {
     a[i][0] += i, update(i);
+  }
   auto const query = [&a, n](int x) {
     auto res = 0, y = x;
     while (x <= n) {
@@ -81,12 +87,14 @@ auto solve() {
   };
   while (m--) {
     auto const op = read(), x = read();
-    if (op)
+    if (op) {
       query(x);
-    else
+    } else {
       for (a[x][0] = x + read();
-           auto const i : iota(x / B * B, x + 1) | views::reverse)
-        update(i);
+           auto const i : iota(x / B * B, x + 1) | reverse) {
+        a[i][0] += i, update(i);
+      }
+    }
   }
 }
 
