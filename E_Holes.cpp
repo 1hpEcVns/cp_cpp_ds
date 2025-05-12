@@ -1,4 +1,3 @@
-#include <cmath>
 #include <cstdio>
 
 const int N_io = 1e4 + 10;
@@ -47,6 +46,7 @@ struct iofush { // NOLINT
 // 以上为快读快写
 
 #include <array>
+#include <cmath>
 #include <ranges>
 #include <vector>
 
@@ -56,32 +56,28 @@ using namespace views;
 auto solve() {
   auto const n = read(), B = static_cast<int>(sqrt(n));
   auto m = read();
-  auto a = vector(n + 1, array<int, 3>{});
+  auto a = vector(n + 1, array<int, 4>{});
   for (auto &i : a | drop(1))
     i[0] = read();
-  auto const update = [&a, B](int const &x) {
-    auto &[y, nxt, sum] = a[x];
-    if (x / B == y / B) { // 同一块
-      nxt = a[y][1];
-      sum = a[y][2] + 1;
-      return;
-    } // 块之间
-    nxt = y;
-    sum = 1;
+  auto const update = [&a, B, n](int const &x) {
+    auto &[y, nxt, lst, sum] = a[x];
+    if (y > n) {
+      nxt = y, lst = x, sum = 1;
+    } else if (x / B == y / B && y <= n) { // 同一块且不越界
+      nxt = a[y][1], lst = a[y][2], sum = a[y][3] + 1;
+    } else {
+      nxt = y, lst = y, sum = 1;
+    }
   };
   for (auto const i : iota(1, n + 1) | views::reverse)
     a[i][0] += i, update(i);
   auto const query = [&a, n](int x) {
-    auto res = 0;
-    for (;;) {
-      res += a[x][2];
-      auto const nxt = a[x][1];
-      if (nxt > n) {
-        write(x), pc(' '), write(res), pc('\n');
-        break; // 出界前的最后一个
-      }
-      x = nxt;
+    auto res = 0, y = x;
+    while (x <= n) {
+      auto const &[o, nxt, lst, sum] = a[x];
+      x = nxt, y = lst, res += sum;
     }
+    write(y), pc(' '), write(res), pc('\n');
   };
   while (m--) {
     auto const op = read(), x = read();
