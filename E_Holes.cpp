@@ -100,7 +100,7 @@ auto solve() {
 } // namespace
 auto main() noexcept -> int {
   try {
-    ::solve();
+    solve();
   } catch (...) {
     return 0;
   }
