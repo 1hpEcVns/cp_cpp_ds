@@ -61,9 +61,7 @@ auto solve() {
   auto const n = read(), B = static_cast<int>(sqrt(n));
   auto m = read();
   auto a = vector(n + 1, array<int, 4>{});
-  for (auto &i : a | drop(1)) {
-    i[0] = read();
-  }
+  
   auto const update = [&a, B, n](int const &x) {
     auto &[y, nxt, lst, sum] = a[x];
     if (y > n) {
@@ -74,9 +72,6 @@ auto solve() {
       nxt = y, lst = y, sum = 1;
     }
   };
-  for (auto const i : iota(1, n + 1) | reverse) {
-    a[i][0] += i, update(i);
-  }
   auto const query = [&a, n](int x) {
     auto res = 0, y = x;
     while (x <= n) {
@@ -85,6 +80,12 @@ auto solve() {
     }
     write(y), pc(' '), write(res), pc('\n');
   };
+  for (auto const i : iota(1, n + 1) | reverse) {
+
+    a[i][0] += i, update(i);
+  }for (auto &i : a | drop(1)) {
+    i[0] = read();
+  }
   while (m--) {
     auto const op = read(), x = read();
     if (op) {
