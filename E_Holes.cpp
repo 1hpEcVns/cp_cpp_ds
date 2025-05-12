@@ -56,7 +56,7 @@ using std::vector;
 using std::views::drop;
 using std::views::iota;
 using std::views::reverse;
-
+namespace {
 auto solve() {
   auto const n = read(), B = static_cast<int>(sqrt(n));
   auto m = read();
@@ -90,18 +90,18 @@ auto solve() {
     if (op) {
       query(x);
     } else {
-      for (a[x][0] = x + read();
-           auto const i : iota(x / B * B, x + 1) | reverse) {
-        a[i][0] += i, update(i);
+      a[x][0] = x + read();
+      for (auto const i : iota(x / B * B, x + 1) | reverse) {
+        update(i);
       }
     }
   }
 }
-
+} // namespace
 auto main() noexcept -> int {
   try {
-    solve();
+    ::solve();
   } catch (...) {
-    return 1;
+    return 0;
   }
 }

@@ -10,10 +10,34 @@ Diagnostics:
   ClangTidy:
     Add:
       - abseil-*
+      - altera-*
+      - android-*
       - llvm-*
+      - hicpp-*
+      - cert-*
+      - darwin-*
       - modernize-*
       - performance-*
       - cppcoreguidelines-*
       - bugprone-*
+      - google-*
+      - linuxkernel-*
+      - llvm-*
+      - llvmlibc-*
+      - portability-*
+      - openmp-*
+      - zircon-*
+      - clang-analyzer-*
+      - misc-*
+
     Remove:
       - cppcoreguidelines-avoid-magic-numbers
+      - altera-unroll-loops
+      - llvmlibc-restrict-system-libc-headers
+      - llvmlibc-implementation-in-namespace
+      - llvmlibc-callee-namespace
+
+
+
+InlayHints:
+  Enabled: false
