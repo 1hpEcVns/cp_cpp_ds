@@ -29,6 +29,7 @@ Diagnostics:
       - zircon-*
       - clang-analyzer-*
       - misc-*
+      - readability-*
 
     Remove:
       - cppcoreguidelines-avoid-magic-numbers
@@ -36,8 +37,12 @@ Diagnostics:
       - llvmlibc-restrict-system-libc-headers
       - llvmlibc-implementation-in-namespace
       - llvmlibc-callee-namespace
-
+    CheckOptions:
+      readability-identifier-length.IgnoredVariableNames: '^(i|j|k|x|y|z)$'
+      readability-identifier-length.IgnoredParameterNames: '^(i|j|k|x|y|z)$'
+      readability-identifier-length.IgnoredLoopCounterNames: '^(i|j|k)$'
+      readability-identifier-length.IgnoredExceptionVariableNames: '^(e)$'
 
 
 InlayHints:
-  Enabled: false
+  Enabled: true

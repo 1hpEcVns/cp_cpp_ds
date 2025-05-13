@@ -58,42 +58,47 @@ using std::views::iota;
 using std::views::reverse;
 namespace {
 auto solve() {
-  auto const n = read(), B = static_cast<int>(sqrt(n));
-  auto m = read();
+  auto const n = read();
+  auto const blockSize = static_cast<int>(sqrt(n));
+  auto queryAmount = read();
   auto a = vector(n + 1, array<int, 4>{});
-  
-  auto const update = [&a, B, n](int const &x) {
+  auto const update = [&a, blockSize, n](int const &x) {
     auto &[y, nxt, lst, sum] = a[x];
     if (y > n) {
       nxt = y, lst = x, sum = 1;
-    } else if (x / B == y / B && y <= n) { // 同一块且不越界
+    } else if (x / blockSize == y / blockSize && y <= n) { // 同一块且不越界
       nxt = a[y][1], lst = a[y][2], sum = a[y][3] + 1;
     } else {
       nxt = y, lst = y, sum = 1;
     }
   };
-  auto const query = [&a, n](int x) {
-    auto res = 0, y = x;
-    while (x <= n) {
-      auto const &[o, nxt, lst, sum] = a[x];
-      x = nxt, y = lst, res += sum;
+  auto const query = [&a, n](int const &pos) {
+    auto res = 0;
+    auto cur_pos = pos;
+    auto lst_pos = pos;
+    while (cur_pos <= n) {
+      auto const &[o, nxt, lst, sum] = a[cur_pos];
+      cur_pos = nxt, lst_pos = lst, res += sum;
     }
-    write(y), pc(' '), write(res), pc('\n');
+    write(lst_pos), pc(' '), write(res), pc('\n');
   };
-  for (auto const i : iota(1, n + 1) | reverse) {
-
-    a[i][0] += i, update(i);
-  }for (auto &i : a | drop(1)) {
-    i[0] = read();
+  for (auto &pos : a | drop(1)) {
+    pos[0] = read();
   }
-  while (m--) {
-    auto const op = read(), x = read();
-    if (op) {
-      query(x);
+  for (auto const pos : iota(1, n + 1) | reverse) {
+    a[pos][0] += pos, update(pos);
+  }
+
+  while ((queryAmount--) != 0) {
+    auto const opt = read();
+    auto const pos = read();
+    if (opt == 1) {
+      query(pos);
     } else {
-      a[x][0] = x + read();
-      for (auto const i : iota(x / B * B, x + 1) | reverse) {
-        update(i);
+      a[pos][0] = pos + read();
+      for (auto const cur_pos :
+           iota(pos / blockSize * blockSize, pos + 1) | reverse) {
+        update(cur_pos);
       }
     }
   }
