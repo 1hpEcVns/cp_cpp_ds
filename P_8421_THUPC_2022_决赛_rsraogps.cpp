@@ -63,7 +63,7 @@ using u32 = uint32_t;
 
 // 优化 1:使用gnu::always_inline针对短lambda函数进行内联
 // 优化 2:引用传递
-// 优化结果:1312ms->1012ms
+// 优化结果:1312ms->995ms
 auto solve() {
   // 输入
   auto arrSize = read();
@@ -102,7 +102,8 @@ auto solve() {
   auto getSum = [&sum] [[gnu::always_inline]] (const u32 i, const u32 T) {
     return sum[i][0] + (sum[i][1] * (T - sum[i][2]));
   };
-  auto updSum = [&getSum, &sum, &getVal](const u32 i, const u32 T) {
+  auto updSum = [&getSum, &sum, &getVal] [[gnu::always_inline]] (const u32 i,
+                                                                 const u32 T) {
     sum[i] = {
         getSum(i, T),
         sum[i - 1][1] + getVal(i),
