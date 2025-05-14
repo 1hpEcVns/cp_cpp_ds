@@ -44,4 +44,4 @@ Diagnostics:
 
 
 InlayHints:
-  Enabled: false
+  Enabled: true
