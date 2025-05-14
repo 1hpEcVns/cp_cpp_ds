@@ -61,6 +61,9 @@ using std::views::drop;
 using std::views::iota;
 using u32 = uint32_t;
 
+// 优化 1:使用gnu::always_inline针对短lambda函数进行内联
+// 优化 2:引用传递
+// 优化结果:1312ms->1012ms
 auto solve() {
   // 输入
   auto arrSize = read();
@@ -84,8 +87,10 @@ auto solve() {
     rPtr[r].push_back({i, l});
   }
   // 对序列的操作
-  auto getVal = [&arr](u32 i) { return arr[i][0] * arr[i][1] * arr[i][2]; };
-  auto updArr = [&arr](u32 i) {
+  auto getVal = [&arr] [[gnu::always_inline]] (u32 i) {
+    return arr[i][0] * arr[i][1] * arr[i][2];
+  };
+  auto updArr = [&arr] [[gnu::always_inline]] (u32 i) {
     auto &[x1, y1, z1] = arr[i];
     const auto &[x2, y2, z2] = arr[i + 1];
     const auto [x3, y3, z3] = tuple(x1 & x2, y1 | y2, gcd(z1, z2));
@@ -94,7 +99,7 @@ auto solve() {
   };
   // 对二维前缀和的操作
   auto sum = vector(arrSize + 1, array<u32, 3>());
-  auto getSum = [&sum](const u32 i, const u32 T) {
+  auto getSum = [&sum] [[gnu::always_inline]] (const u32 i, const u32 T) {
     return sum[i][0] + (sum[i][1] * (T - sum[i][2]));
   };
   auto updSum = [&getSum, &sum, &getVal](const u32 i, const u32 T) {
@@ -123,7 +128,7 @@ auto solve() {
     updAns(i);
   }
   // 输出
-  for (u32 i : ans | drop(1)) {
+  for (u32 const &i : ans | drop(1)) {
     write(i), pc('\n');
   }
 }
