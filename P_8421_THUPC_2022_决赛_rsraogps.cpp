@@ -1,15 +1,12 @@
-#include <cstdio>
-#include <locale>
+#include <cstdint> // for uint32_t
+#include <cstdio>  // for fread
 
-const int N_io = 1e4 + 10;
-
-char *p1, *p2, buf[N_io]; //
-NOLINT
-[[nodiscard]] inline char nc() noexcept { //
-  NOLINT
-  return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), //
-                       NOLINT p1 == p2)                              //
-                  NOLINT
+constexpr int N_io = 1e5 + 10;
+// input
+char *p1, *p2, buf[N_io];                                            // NOLINT
+[[nodiscard]] inline char nc() noexcept {                            // NOLINT
+  return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), // NOLINT
+                       p1 == p2)                                     // NOLINT
               ? EOF
               : *p1++); // NOLINT
 }
@@ -23,6 +20,7 @@ uint32_t read() {                    // NOLINT
   return x;                          // NOLINT
 }
 
+// output
 char obuf[N_io], *p3 = obuf;                                        // NOLINT
 inline void pc(char x) {                                            // NOLINT
   (p3 - obuf < N_io)                                                // NOLINT
@@ -45,11 +43,11 @@ struct iofush { // NOLINT
     fwrite(obuf, p3 - obuf, 1, stdout); // NOLINT
   }
 } ioflush1; // NOLINT
-// 以上为快读快写
+// 以上为IO优化
 
-#include <array>
+#include <array>   // for array
 #include <numeric> // for gcd
-#include <ranges>  // for views
+#include <ranges>  // for views::drop, views::iota
 #include <tuple>   // for tuple
 #include <vector>  // for vector
 
@@ -60,15 +58,11 @@ using std::gcd;
 using std::tuple;
 using std::vector;
 using std::views::drop;
-using std::views::enumerate;
 using std::views::iota;
-using std::views::reverse;
-using std::views::take;
-using std::views::take_while;
-using std::views::zip;
 using u32 = uint32_t;
 
 auto solve() {
+  // 输入
   auto arrSize = read();
   auto querySize = read();
   auto arr = vector<array<u32, 3>>(arrSize + 1);
@@ -82,37 +76,57 @@ auto solve() {
     i[2] = read();
   }
   auto lPtr = vector<u32>(querySize + 1);
-  auto rPtr = vector(querySize + 1, vector<array<u32, 2>>());
+  auto rPtr = vector(arrSize + 1, vector<array<u32, 2>>());
   for (u32 i : iota(1U, querySize + 1)) {
-    lPtr[i] = read();
-    rPtr[lPtr[i]].push_back({i, read()});
+    auto l = read();
+    auto r = read();
+    lPtr[i] = l;
+    rPtr[r].push_back({i, l});
   }
-  auto ans = vector<u32>(querySize + 1);
-  auto sum = vector(arrSize + 1, array<u32, 3>());
+  // 对序列的操作
   auto getVal = [&arr](u32 i) { return arr[i][0] * arr[i][1] * arr[i][2]; };
-  auto getSum = [&sum](u32 i, u32 T) {
+  auto updArr = [&arr](u32 i) {
+    auto &[x1, y1, z1] = arr[i];
+    const auto &[x2, y2, z2] = arr[i + 1];
+    const auto [x3, y3, z3] = tuple(x1 & x2, y1 | y2, gcd(z1, z2));
+    return x3 != x1 || y3 != y1 || z3 != z1        ? x1 = x3, y1 = y3, z1 = z3,
+                                              true : false;
+  };
+  // 对二维前缀和的操作
+  auto sum = vector(arrSize + 1, array<u32, 3>());
+  auto getSum = [&sum](const u32 i, const u32 T) {
     return sum[i][0] + (sum[i][1] * (T - sum[i][2]));
   };
-  auto updSum = [&getSum, &sum, &getVal](u32 i, u32 T) {
+  auto updSum = [&getSum, &sum, &getVal](const u32 i, const u32 T) {
     sum[i] = {
         getSum(i, T),
         sum[i - 1][1] + getVal(i),
         T,
     };
   };
-  for (u32 i : iota(1U, arrSize + 1)) {
-    auto j = i - 1;
-    for (; j != 0; j--) {
-      auto &[x1, y1, z1] = arr[j];
-      const auto &[x2, y2, z2] = arr[j + 1];
-      const auto [x3, y3, z3] = tuple(x1 & x2, y1 | y2, gcd(z1, z2));
-      if (x3 == x1 && y3 == y1 && z3 == z1) {
-        break;
-      }
-      x1 = x3, y1 = y3, z1 = z3;
+  // 对答案的操作
+  auto ans = vector<u32>(querySize + 1);
+  auto updAns = [&ans, &getSum, &rPtr](u32 i) {
+    for (auto [id, j] : rPtr[i]) {
+      ans[id] = getSum(i, i) - getSum(j - 1, i);
     }
+  };
+  for (u32 i : iota(1U, arrSize + 1)) {
+    auto k = i - 1;
+    while (k != 0 && updArr(k)) {
+      --k;
+    }
+    sum[i][0] = getSum(i - 1, i - 1);
+    for (u32 j : iota(k + 1, i + 1)) {
+      updSum(j, i - 1);
+    }
+    updAns(i);
   }
-
+  // 输出
+  for (u32 i : ans | drop(1)) {
+    write(i), pc('\n');
+  }
+}
 } // namespace
 
 auto main() noexcept -> int {
