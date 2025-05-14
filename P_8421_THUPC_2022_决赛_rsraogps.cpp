@@ -3,10 +3,13 @@
 
 const int N_io = 1e4 + 10;
 
-char *p1, *p2, buf[N_io];                                            // NOLINT
-[[nodiscard]] inline char nc() noexcept {                            // NOLINT
-  return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), // NOLINT
-                       p1 == p2)                                     // NOLINT
+char *p1, *p2, buf[N_io]; //
+NOLINT
+[[nodiscard]] inline char nc() noexcept { //
+  NOLINT
+  return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), //
+                       NOLINT p1 == p2)                              //
+                  NOLINT
               ? EOF
               : *p1++); // NOLINT
 }
@@ -47,7 +50,7 @@ struct iofush { // NOLINT
 #include <array>
 #include <numeric> // for gcd
 #include <ranges>  // for views
-#include <utility> // for tuple
+#include <tuple>   // for tuple
 #include <vector>  // for vector
 
 namespace {
@@ -78,33 +81,37 @@ auto solve() {
   for (auto &&i : arr | drop(1)) {
     i[2] = read();
   }
-  auto const query = [querySize]() {
-    auto qlr = vector<array<u32, 2>>(querySize + 1);
-    auto cntR = vector(querySize + 1,0U);
-    for (auto &&i : qlr | drop(1)) {
-      i[0] = read(), i[1] = read(), cntR[i[1]]++;
-    }
-    auto res = vector(querySize + 1, vector{array{0U, 0U}});
-    for (auto &&[i, vec] : enumerate(res)) {
-      vec.reserve(cntR[i]);
-    }
-    for (auto &&[i, j] : enumerate(qlr) | drop(1)) {
-      res[j[0]].push_back({static_cast<u32>(i), j[1]});
-    }
-    return res;
-  };
-  for (auto sum1 = vector<int>(arrSize + 1), sum2 = sum1;
-       auto lPtr : iota(1U, querySize + 1)) {
-    auto res = arr[lPtr];
-    auto view = arr | drop(1) | take(lPtr) | reverse |
-                take_while([&res](auto &&cur) {
-                  return cur[0] &= res[0], cur[1] |= res[1],
-                         cur[2] = gcd(cur[2], res[2]), res != cur ? res = cur,
-                         false : true;
-                }) |
-                reverse;
+  auto lPtr = vector<u32>(querySize + 1);
+  auto rPtr = vector(querySize + 1, vector<array<u32, 2>>());
+  for (u32 i : iota(1U, querySize + 1)) {
+    lPtr[i] = read();
+    rPtr[lPtr[i]].push_back({i, read()});
   }
-}
+  auto ans = vector<u32>(querySize + 1);
+  auto sum = vector(arrSize + 1, array<u32, 3>());
+  auto getVal = [&arr](u32 i) { return arr[i][0] * arr[i][1] * arr[i][2]; };
+  auto getSum = [&sum](u32 i, u32 T) {
+    return sum[i][0] + (sum[i][1] * (T - sum[i][2]));
+  };
+  auto updSum = [&getSum, &sum, &getVal](u32 i, u32 T) {
+    sum[i] = {
+        getSum(i, T),
+        sum[i - 1][1] + getVal(i),
+        T,
+    };
+  };
+  for (u32 i : iota(1U, arrSize + 1)) {
+    auto j = i - 1;
+    for (; j != 0; j--) {
+      auto &[x1, y1, z1] = arr[j];
+      const auto &[x2, y2, z2] = arr[j + 1];
+      const auto [x3, y3, z3] = tuple(x1 & x2, y1 | y2, gcd(z1, z2));
+      if (x3 == x1 && y3 == y1 && z3 == z1) {
+        break;
+      }
+      x1 = x3, y1 = y3, z1 = z3;
+    }
+  }
 
 } // namespace
 

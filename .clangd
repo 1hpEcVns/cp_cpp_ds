@@ -38,9 +38,9 @@ Diagnostics:
       - llvmlibc-implementation-in-namespace
       - llvmlibc-callee-namespace
     CheckOptions:
-      readability-identifier-length.IgnoredVariableNames: '^(i|j|k|x|y|z)$'
-      readability-identifier-length.IgnoredParameterNames: '^(i|j|k|x|y|z)$'
-      readability-identifier-length.IgnoredLoopCounterNames: '^(i|j|k)$'
+      readability-identifier-length.IgnoredVariableNames: '^(i|j|k|x|y|z|T)$'
+      readability-identifier-length.IgnoredParameterNames: '^(i|j|k|x|y|z|T)$'
+      readability-identifier-length.IgnoredLoopCounterNames: '^(i|j|k|T)$'
       readability-identifier-length.IgnoredExceptionVariableNames: '^(e)$'
 
 
