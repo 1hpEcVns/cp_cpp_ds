@@ -1,57 +1,56 @@
-#include <cstdio>
+#include <cmath> //for exp,log gcc需要 clang msvc不需要
 
-const int N_io = 1e4 + 10;
-
-char *p1, *p2, buf[N_io];                                            // NOLINT
-[[nodiscard]] inline char nc() noexcept {                            // NOLINT
-  return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), // NOLINT
-                       p1 == p2)                                     // NOLINT
-              ? EOF
-              : *p1++); // NOLINT
-}
-int read() {                         // NOLINT
-  int x = 0;                         // NOLINT
-  char ch = nc();                    // NOLINT
-  while (ch < 48 || ch > 57)         // NOLINT
-    ch = nc();                       // NOLINT
-  while (ch >= 48 && ch <= 57)       // NOLINT
-    x = x * 10 + ch - 48, ch = nc(); // NOLINT
-  return x;                          // NOLINT
-}
-
-char obuf[N_io], *p3 = obuf;                                        // NOLINT
-inline void pc(char x) {                                            // NOLINT
-  (p3 - obuf < N_io)                                                // NOLINT
-      ? (*p3++ = x)                                                 // NOLINT
-      : (fwrite(obuf, p3 - obuf, 1, stdout), p3 = obuf, *p3++ = x); // NOLINT
-}
-inline void write(int x) { // NOLINT
-  if (!x) {                // NOLINT
-    pc('0');               // NOLINT
-    return;                // NOLINT
-  } // NOLINT
-  int len = 0, k1 = x, c[40];          // NOLINT
-  if (k1 < 0)                          // NOLINT
-    k1 = -k1, pc('-');                 // NOLINT
-  while (k1)                           // NOLINT
-    c[len++] = k1 % 10 ^ 48, k1 /= 10; // NOLINT
-  while (len--)                        // NOLINT
-    pc(c[len]);                        // NOLINT
-}
-struct iofush { // NOLINT
-  ~iofush() {
-    fwrite(obuf, p3 - obuf, 1, stdout); // NOLINT
-  }
-} ioflush1; // NOLINT
-// 以上为快读快写
-
-#include <vector>
-
-//本题是练习sqrt树
+#include <algorithm> //for sort
+#include <array>     //for array
+#include <iostream>  //for cin,cout
+#include <ranges>    //for iota
+#include <vector>    //for vector
 
 namespace {
-using namespace std; // NOLINT
-auto solve() {}
+using std::array;
+using std::cin;
+using std::cout;
+using std::greater;
+using std::vector;
+using std::ranges::sort;
+using std::views::drop;
+using std::views::iota;
+auto solve() {
+  cin.tie(nullptr)->sync_with_stdio(false);
+  int arrSize;
+  cin >> arrSize;
+  auto arr = vector(arrSize + 1, array{0, 0});
+  for (auto i : iota(1, arrSize + 1)) {
+    cin >> arr[i][0];
+    arr[i][1] = i;
+  }
+  auto arr1 = vector(arrSize, 0);
+  auto arr2 = vector((arrSize >> 6) + 1, 0);
+  auto arr3 = vector((arrSize >> 12) + 1, 0);
+  auto qry = [&arr1, &arr2, &arr3](int x) {
+    int64_t ans = 0;
+    for (auto i : iota((x >> 6) << 6, x + 1)) {
+      ans += arr1[i];
+    }
+    for (auto i : iota((x >> 12) << 6, x >> 6)) {
+      ans += arr2[i];
+    }
+    for (auto i : iota(0, x >> 12)) {
+      ans += arr3[i];
+    }
+    return ans;
+  };
+  auto upd = [&arr1, &arr2, &arr3](int x) {
+    arr1[x]++, arr2[x >> 6]++, arr3[x >> 12]++;
+  };
+  sort(arr | drop(1), greater{});
+  int64_t ans = 0;
+  for (auto &[x, y] : arr | drop(1)) {
+    ans += qry(y - 1);
+    upd(y);
+  }
+  cout << ans;
+}
 } // namespace
 
 auto main() noexcept -> int {
