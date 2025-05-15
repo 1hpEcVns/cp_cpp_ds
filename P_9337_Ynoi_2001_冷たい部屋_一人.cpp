@@ -65,24 +65,26 @@ using std::max;
 using std::min;
 using std::vector;
 using std::ranges::sort;
-using std::ranges::unique;
+using std::ranges::to;
 using std::views::drop;
 using std::views::filter;
 using std::views::iota;
+using std::views::reverse;
 using std::views::zip;
-using namespace std; // NOLINT
+constexpr int BlockSize = 3000;
 auto solve() {
   // 读入a数组并建立a_id映射
   auto arrSize = read();
   auto qrySize = read();
   auto a = vector(arrSize + 1, 0);
   auto cnt = vector(arrSize + 1, 0);
+  auto ans = vector(qrySize + 1, 0LL);
   for (int &i : a | drop(1)) {
-    i = read(), ++cnt[i];
+    i = read(), ++cnt1[i];
   }
   auto aId = vector(arrSize + 1, vector<int>());
   for (int i : iota(1, arrSize + 1)) {
-    aId[i].reserve(cnt[i]), cnt[i] = 0;
+    aId[i].reserve(cnt1[i]), cnt1[i] = 0;
   }
   for (int i : iota(1, arrSize + 1)) {
     aId[a[i]].push_back(i);
@@ -95,15 +97,19 @@ auto solve() {
     return array{min(a[0], b[0]), max(a[1], b[1])};
   };
   // 读入排列y_k
-  for (auto i : iota(1, arrSize)) {
+  st[0].resize(arrSize + 1);
+  for (auto i : iota(1, arrSize + 1)) {
     int x = read();
     st[0][i] = array{x, x};
   }
   // 初始化ST表
   for (int i : iota(1, stSize)) {
-    st[i].resize(arrSize - (1 << i) + 1);
-    for (int j : iota(1, arrSize - (1 << i) + 1)) {
-      st[i][j] = minmaxUpd(st[i - 1][j], st[i - 1][j + (1 << (i - 1))]);
+    const int curSize = arrSize - (1 << i) + 1;
+    st[i].reserve(curSize + 1);
+    st[i].emplace_back(array{0, 0});
+    for (int j : iota(1, curSize + 1)) {
+      st[i].emplace_back(
+          minmaxUpd(st[i - 1][j], st[i - 1][j + (1 << (i - 1))]));
     }
   }
   // 通过st表查询y_k的[l,r]区间的minmax信息
@@ -113,42 +119,92 @@ auto solve() {
   };
   // ST表 end
   // 莫队 begin
-  auto lPtr = vector(qrySize + 1, 0);
-  auto rPtr = vector(qrySize + 1, 0);
-  for (auto &&[l, r] : zip(lPtr, rPtr) | drop(1)) {
+  auto qryArr = iota(1, qrySize + 1) | to<vector>();
+  auto qryL = vector(qrySize + 1, 0);
+  auto qryR = vector(qrySize + 1, 0);
+  for (auto &&[l, r] : zip(qryL, qryR)) {
     l = read(), r = read(), ++cnt[l];
   }
-  auto lId = vector(qrySize + 1, vector<int>());
-  for (int i : iota(1, qrySize + 1)) {
-    lId[i].reserve(cnt[i]);
+  sort(qryArr,
+       [&qryR](int const &i, int const &j) { return qryR[i] < qryR[j]; });
+  auto lId = vector(arrSize + 1, vector<int>());
+  for (int i : iota(1, arrSize + 1)) {
+    lId[i].reserve(cnt[i]), cnt[i] = 0;
   }
-  for (int i : iota(1, qrySize + 1)) {
-    lId[lPtr[i]].push_back(i);
-  }
-
+  for (auto)
   // 莫队 end
+  // 小于BlockSize的情况
+  {
+    // 立方根分块前缀和 begin
+    auto sum1 = vector(arrSize + 1, 0);
+    auto sum2 = vector((arrSize >> 6) + 1, 0);
+    auto sum3 = vector((arrSize >> 12) + 1, 0);
+    auto sumUpd = [&sum1, &sum2, &sum3] [[gnu::always_inline]] (int const &i) {
+      ++sum1[i], ++sum2[i >> 6], ++sum3[i >> 12];
+    };
+    auto sumQry = [&](int const i) {
+      auto res = 0;
+      for (auto k : iota((i >> 6) << 6, i + 1)) {
+        res += sum1[k];
+      }
+      for (auto k : iota((i >> 12) << 6, i >> 6)) {
+        res += sum2[k];
+      }
+      for (auto k : iota(0, i >> 12)) {
+        res += sum3[k];
+      }
+      return res;
+    };
+    auto sumGet = [&sumQry] [[gnu::always_inline]] (int const &l,
+                                                    int const &r) {
+      return sumQry(r) - sumQry(l - 1);
+    };
+    // 立方根分块前缀和 end
+    auto viewLe = iota(1, arrSize) | filter([&](int const &i) {
+                    return aId[i].size() < BlockSize;
+                  });
+    auto curRange = vector(arrSize + 1, vector<array<int, 2>>());
+    auto lastMin = vector(arrSize + 1, vector<int>());
+    auto rk = vector(arrSize + 1, 0);
+    for (auto i : viewLe) {
+      auto const &cur = aId[i];
+      auto const curSize = static_cast<int>(cur.size());
+      curRange[i].reserve(curSize);
+      for (auto j : iota(0, curSize)) {
+        rk[cur[j]] = j;
+        if (j != curSize - 1) {
+          auto res = stQry(cur[j], cur[j + 1]);
+          curRange[i].emplace_back(res);
+          ++cnt[res[0]];
+        }
+      }
+    }
+    for (auto i : iota(1, arrSize + 1)) {
+      lastMin[i].reserve(cnt[i]);
+    }
+    for (auto i : viewLe) {
+      auto const &cur = aId[i];
+      auto const curSize = static_cast<int>(cur.size());
+      for (auto j : iota(0, curSize - 1)) {
+        lastMin[stQry(cur[j], cur[j + 1])[0]].emplace_back(i);
+      }
+    }
+    for (auto i : iota(1, arrSize + 1) | reverse) {
+      for (auto j : lastMin[i]) {
+        auto const val = a[j];
+        auto const curRk = rk[j];
+        auto const curSize = static_cast<int>(curRange[val].size());
+        auto const &cur = curRange[val];
+        for (auto mx = 0; auto l : iota(0, cur[curRk][1] + 1) | reverse) {
+        }
+      }
+      for (int const &j : lId[i]) {
+        ans[j] += sumQry(qryR[j]);
+      }
+    }
+  }
 
-  // 立方根分块前缀和 begin
-  auto sum1 = vector(arrSize + 1, 0LL);
-  auto sum2 = vector((arrSize >> 6) + 1, 0LL);
-  auto sum3 = vector((arrSize >> 12) + 1, 0LL);
-  auto sumUpd = [&sum1, &sum2, &sum3](int const i, int64_t const x) {
-    sum1[i] += x, sum2[i >> 6] += x, sum3[i >> 12] += x;
-  };
-  auto sumQry = [&](int const i) {
-    auto res = 0LL;
-    for (auto k : iota((i >> 6) << 6, i + 1)) {
-      res += sum1[k];
-    }
-    for (auto k : iota((i >> 12) << 6, i >> 6)) {
-      res += sum2[k];
-    }
-    for (auto k : iota(0, i >> 12)) {
-      res += sum3[k];
-    }
-    return res;
-  };
-  // 立方根分块前缀和 end
+  // 大于BlockSize的情况
 }
 } // namespace
 
