@@ -5,7 +5,6 @@ constexpr int N_io = 1e5 + 1;
 
 char *p1, *p2, buf[N_io];                 // NOLINT
 [[nodiscard]] inline char nc() noexcept { // NOLINT
-
   return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), // NOLINT
                        p1 == p2)                                     // NOLINT
 
@@ -55,9 +54,8 @@ struct iofush { // NOLINT
 #include <utility>
 #include <vector>
 
-// 本题分为三个部分
-// RMQ 问题
-// 莫队(离线)
+//综合考察了分块 离散化 回滚莫队 块状链表 ST表
+
 namespace {
 using std::array;
 using std::bit_width;
@@ -186,10 +184,10 @@ auto solve() {
       auto const &cur = aId[i];
       auto const curSize = static_cast<int>(cur.size());
       for (auto const j : iota(0, curSize - 1)) {
-        lastMin[stQry(cur[j], cur[j + 1])[0]].emplace_back(i);
+        lastMin[stQry(cur[j], cur[j + 1])[0]].emplace_back(cur[j]);
       }
     }
-    auto updLe = [&](int const &i) {
+    for (auto i : iota(1, arrSize + 1) | reverse) {
       for (auto const &id : lastMin[i]) {
         auto const val = a[id];
         auto const curRk = rk[id];
@@ -210,9 +208,6 @@ auto solve() {
       for (auto const &id : lId[i]) {
         ans[id] += sumQry(rQry[id]);
       }
-    };
-    for (auto i : iota(1, arrSize + 1) | reverse) {
-      updLe(i);
     }
   }
   // 大于BlockSize的情况
@@ -359,6 +354,7 @@ auto main() noexcept -> int {
   try {
     solve();
   } catch (...) {
+    puts("error");
     return 0;
   }
 }
