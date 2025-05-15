@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 
 constexpr int N_io = 1e5 + 1;
 
@@ -119,7 +118,6 @@ auto solve() {
     return minmaxUpd(st[k][l], st[k][r - (1 << k) + 1]);
   };
   // ST表 end
-  // 莫队 begin
   auto qryArr = iota(1, qrySize + 1) | to<vector>();
   auto lQry = vector(qrySize + 1, 0);
   auto rQry = vector(qrySize + 1, 0);
@@ -128,16 +126,15 @@ auto solve() {
   }
   sort(qryArr,
        [&rQry](int const &i, int const &j) { return rQry[i] < rQry[j]; });
-  auto lId = vector(arrSize + 1, vector<int>());
-  for (int i : iota(1, arrSize + 1)) {
-    lId[i].reserve(cnt[i]), cnt[i] = 0;
-  }
-  for (auto i = 1; auto const &l : lQry) {
-    lId[l].emplace_back(i), ++i;
-  }
-  // 莫队 end
   // 小于BlockSize的情况
   {
+    auto lId = vector(arrSize + 1, vector<int>());
+    for (int i : iota(1, arrSize + 1)) {
+      lId[i].reserve(cnt[i]), cnt[i] = 0;
+    }
+    for (auto i = 1; auto const &l : lQry | drop(1)) {
+      lId[l].emplace_back(i),++i;
+    }
     // 立方根分块前缀和 begin
     auto sum1 = vector(arrSize + 1, 0);
     auto sum2 = vector((arrSize >> 6) + 1, 0);
@@ -184,8 +181,10 @@ auto solve() {
     for (auto const i : viewLe) {
       auto const &cur = aId[i];
       auto const curSize = static_cast<int>(cur.size());
-      for (auto const j : iota(0, curSize - 1)) {
-        lastMin[stQry(cur[j], cur[j + 1])[0]].emplace_back(cur[j]);
+      for (auto const j : iota(0, curSize)) {
+        if (j != curSize - 1) {
+          lastMin[stQry(cur[j], cur[j + 1])[0]].push_back(cur[j]);
+        }
       }
     }
     for (auto i : iota(1, arrSize + 1) | reverse) {
@@ -193,11 +192,14 @@ auto solve() {
         auto const val = a[id];
         auto const curRk = rk[id];
         auto const &cur = curRange[val];
-        for (auto mx1 = 0; auto l : iota(0, cur[curRk][1] + 1) | reverse) {
+        for (auto mx1 = 0; auto l : iota(0, curRk + 1) | reverse) {
+          if (l >= cur.size()) {
+            break;
+          }
           if (l < curRk && cur[l][0] <= i) {
             break;
           }
-          mx1 = max(mx1, cur[l][0]);
+          mx1 = max(mx1, cur[l][1]);
           for (auto mx2 = mx1; auto &&[mnR, mxR] : cur | drop(curRk)) {
             if (mnR < i) {
               break;
@@ -264,8 +266,8 @@ auto solve() {
           auto &l = mnmx[i][0];
           auto &r = mnmx[i][1];
           l = lVal[l], r = rVal[r];
-          mnmxL[i][mnmx[i][0] != 0] = l;
-          mnmxR[i][mnmx[i][1] != 0] = r;
+          mnmxL[i][mnmxL[i][0] != 0] = l;
+          mnmxR[i][mnmxR[i][1] != 0] = r;
         }
         for (auto const &i : qryArr) {
           if (lQry[i] <= idVal[sizVal] &&
