@@ -231,8 +231,8 @@ auto solve() {
     auto rTemp = vector(arrSize + 1, 0);
     auto sizVal = 0;
     auto sizQVal = 0;
-    { // Init
-      auto visVal = vector(arrSize + 1, false);
+    {                                           // Init
+      auto visVal = vector(arrSize + 1, false); // 离散化
       auto lVal = vector(arrSize + 1, 0);
       auto rVal = vector(arrSize + 1, 0);
       idVal.push_back(0);
@@ -243,20 +243,19 @@ auto solve() {
       for (auto const j : iota(1, arrSize + 1)) {
         if (visVal[j]) {
           idVal.push_back(j), ++sizVal;
-          lVal[sizVal] = j, rVal[sizVal] = j;
+          curSize lVal[sizVal] = j, rVal[sizVal] = j;
         }
       }
       for (auto const j : iota(1, arrSize + 1)) {
-        if (!visVal[j]) {
-          lVal[j] = lVal[j - 1];
+        if (!lVal[j]) {
+          lVal[j] = j != 1 ? lVal[j - 1] : 0;
         }
       }
       for (auto const j : iota(1, arrSize + 1) | reverse) {
-        if (!visVal[j]) {
-          rVal[j] = rVal[j + 1];
+        if (!rVal[j]) {
+          rVal[j] = j != arrSize ? rVal[j + 1] : 0;
         }
       }
-      idVal.clear();
       for (auto j : iota(0, curSize - 1)) {
         auto &l = mnmx[j][0];
         auto &r = mnmx[j][1];
@@ -271,23 +270,27 @@ auto solve() {
           lTemp[sizQVal] = rVal[lQry[j]], rTemp[sizQVal] = lVal[rQry[j]];
         }
       }
+      idVal.clear();
       if (sizQVal == 0) {
         return;
       }
     }
     // 块状链表
-    auto lBlock = vector(curSize + 1, 0);
-    auto rBlock = vector(curSize + 1, 0);
+    auto lPtr = vector(curSize + 1, 0);
+    auto rPtr = vector(curSize + 1, 0);
     const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
-    auto getcurBlock = [&](int const &i) { return ((i - 1) / curBlock) + 1; };
-    auto link = [&](int const &i) {
-      int64_t res = 1LL * (i - lBlock[i] + 1) * (rBlock[i + 1] - i + 1);
-      rBlock[lBlock[i]] = rBlock[i + 1];
-      lBlock[rBlock[i + 1]] = lBlock[i];
-      sta.emplace(i);
-      return res;
-    };
-    for (auto const curblock : iota(1, sizQVal + 1) | chunk(curBlock)) {
+    for (auto const block : iota(1, sizQVal + 1) | chunk(curBlock)) {
+      auto curR = min(block.front() + sizQVal - 1, sizQVal);
+      for (auto const j : iota(1, curSize)) {
+        lPtr[j] = j, rPtr[j] = j;
+      }
+      auto sum = 0LL;
+      auto link = [&] [[gnu::always_inline]] (int const i) {
+        sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - i + 1);
+        rPtr[lPtr[i]] = rPtr[i + 1];
+        lPtr[rPtr[i + 1]] = lPtr[i];
+        sta.emplace(i);
+      };
     }
   };
   for (auto const i : iota(1, arrSize + 1)) {
