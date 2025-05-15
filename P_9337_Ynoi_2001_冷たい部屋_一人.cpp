@@ -1,10 +1,11 @@
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 
 constexpr int N_io = 1e5 + 1;
 
-char *p1, *p2, buf[N_io];                 // NOLINT
-[[nodiscard]] inline char nc() noexcept { // NOLINT
+char *p1, *p2, buf[N_io];                                            // NOLINT
+[[nodiscard]] inline char nc() noexcept {                            // NOLINT
   return (p1 == p2 && (p2 = (p1 = buf) + fread(buf, 1, N_io, stdin), // NOLINT
                        p1 == p2)                                     // NOLINT
 
@@ -54,7 +55,7 @@ struct iofush { // NOLINT
 #include <utility>
 #include <vector>
 
-//综合考察了分块 离散化 回滚莫队 块状链表 ST表
+// 综合考察了分块 离散化 回滚莫队 块状链表 ST表
 
 namespace {
 using std::array;
@@ -77,7 +78,7 @@ auto solve() {
   auto arrSize = read();
   auto qrySize = read();
   auto a = vector(arrSize + 1, 0);
-  auto cnt = vector(arrSize + 1, 0);
+  auto cnt = vector(max(arrSize, qrySize) + 1, 0);
   auto ans = vector(qrySize + 1, 0LL);
   for (int &i : a | drop(1)) {
     i = read(), ++cnt[i];
@@ -122,7 +123,7 @@ auto solve() {
   auto qryArr = iota(1, qrySize + 1) | to<vector>();
   auto lQry = vector(qrySize + 1, 0);
   auto rQry = vector(qrySize + 1, 0);
-  for (auto &&[l, r] : zip(lQry, rQry)) {
+  for (auto &&[l, r] : zip(lQry, rQry) | drop(1)) {
     l = read(), r = read(), ++cnt[l];
   }
   sort(qryArr,
@@ -198,7 +199,7 @@ auto solve() {
           }
           mx1 = max(mx1, cur[l][0]);
           for (auto mx2 = mx1; auto &&[mnR, mxR] : cur | drop(curRk)) {
-            if (mnR <= i) {
+            if (mnR < i) {
               break;
             }
             mx2 = max(mx2, mxR), sumUpd(mx2);
@@ -223,126 +224,122 @@ auto solve() {
   auto sta_mem = vector<int>();
   sta_mem.reserve(arrSize);
   auto sta = stack(std::move(sta_mem));
-
-  auto updGe = [&](int const val) {
-    auto const &vId = aId[val]; // 所有val值的位置
-    auto const vSize = static_cast<int>(vId.size());
-    auto mnmx = vector(vSize - 1, array<int, 2>());
-    auto mnmxL = vector(vSize - 1, array<int, 2>());
-    auto mnmxR = vector(vSize - 1, array<int, 2>());
-    auto sizVal = 0;                            // 离散化的区间限制的个数
-    auto sizQVal = 0;                           // 满足条件的询问的个数
-    {                                           // Init
-      auto visVal = vector(arrSize + 1, false); // 被离散化的值
-      auto lVal = vector(arrSize + 1, 0);
-      auto rVal = vector(arrSize + 1, 0);
-      idVal.push_back(0); // 离散化的区间限制对应的原始值
-      for (auto const j : iota(0, vSize - 1)) {
-        // 使得点对vId[j]和vId[j+1]产生贡献所需要的限制
-        mnmx[j] = stQry(vId[j], vId[j + 1]);
-        // 离散化限制的值
-        visVal[mnmx[j][0]] = true, visVal[mnmx[j][1]] = true;
-      }
-      for (auto const i : iota(1, arrSize + 1)) {
-        if (visVal[i]) {
-          idVal.push_back(i), ++sizVal;
-          lVal[sizVal] = i, rVal[sizVal] = i;
+  for (auto const val : iota(1, arrSize + 1)) {
+    if (aId[val].size() >= BlockSize) {
+      auto const &vId = aId[val]; // 所有val值的位置
+      auto const vSize = static_cast<int>(vId.size());
+      auto mnmx = vector(vSize - 1, array<int, 2>());
+      auto mnmxL = vector(vSize - 1, array<int, 2>());
+      auto mnmxR = vector(vSize - 1, array<int, 2>());
+      auto sizVal = 0;                            // 离散化的区间限制的个数
+      auto sizQVal = 0;                           // 满足条件的询问的个数
+      {                                           // Init
+        auto visVal = vector(arrSize + 1, false); // 被离散化的值
+        auto lVal = vector(arrSize + 1, 0);
+        auto rVal = vector(arrSize + 1, 0);
+        idVal.push_back(0); // 离散化的区间限制对应的原始值
+        for (auto const j : iota(0, vSize - 1)) {
+          // 使得点对vId[j]和vId[j+1]产生贡献所需要的限制
+          mnmx[j] = stQry(vId[j], vId[j + 1]);
+          // 离散化限制的值
+          visVal[mnmx[j][0]] = true, visVal[mnmx[j][1]] = true;
+        }
+        for (auto const i : iota(1, arrSize + 1)) {
+          if (visVal[i]) {
+            idVal.push_back(i), ++sizVal;
+            lVal[sizVal] = i, rVal[sizVal] = i;
+          }
+        }
+        for (auto const i : iota(1, arrSize + 1)) {
+          if (!lVal[i]) { // 到可以向左扩展贡献的限制的指针
+            lVal[i] = i != 1 ? lVal[i - 1] : 0;
+          }
+        }
+        for (auto const i : iota(1, arrSize + 1) | reverse) {
+          if (!rVal[i]) { // 到可以向右扩展贡献的限制的指针
+            rVal[i] = i != arrSize ? rVal[i + 1] : 0;
+          }
+        }
+        for (auto const i : iota(0, vSize - 1)) {
+          auto &l = mnmx[i][0];
+          auto &r = mnmx[i][1];
+          l = lVal[l], r = rVal[r];
+          mnmxL[i][mnmx[i][0] != 0] = l;
+          mnmxR[i][mnmx[i][1] != 0] = r;
+        }
+        for (auto const &i : qryArr) {
+          if (lQry[i] <= idVal[sizVal] &&
+              idVal[1] <= rQry[i] &&            // 在值为val的点限制的区间内
+              rVal[lQry[i]] <= lVal[rQry[i]]) { // 可以相交
+            ++sizQVal;
+            lUQ.emplace_back(rVal[lQry[i]]);
+            rUQ.emplace_back(lVal[rQry[i]]);
+            qId[sizQVal] = i;
+          }
+        }
+        idVal.clear();
+        if (sizQVal == 0) {
+          return;
         }
       }
-      for (auto const i : iota(1, arrSize + 1)) {
-        if (!lVal[i]) { // 到可以向左扩展贡献的限制的指针
-          lVal[i] = i != 1 ? lVal[i - 1] : 0;
-        }
-      }
-      for (auto const i : iota(1, arrSize + 1) | reverse) {
-        if (!rVal[i]) { // 到可以向右扩展贡献的限制的指针
-          rVal[i] = i != arrSize ? rVal[i + 1] : 0;
-        }
-      }
-      for (auto const i : iota(0, vSize - 1)) {
-        auto &l = mnmx[i][0];
-        auto &r = mnmx[i][1];
-        l = lVal[l], r = rVal[r];
-        mnmxL[i][mnmx[i][0] != 0] = l;
-        mnmxR[i][mnmx[i][1] != 0] = r;
-      }
-      for (auto const &i : qryArr) {
-        if (lQry[i] <= idVal[sizVal] &&
-            idVal[1] <= rQry[i] &&            // 在值为val的点限制的区间内
-            rVal[lQry[i]] <= lVal[rQry[i]]) { // 可以相交
-          ++sizQVal;
-          lUQ.emplace_back(rVal[lQry[i]]);
-          rUQ.emplace_back(lVal[rQry[i]]);
-          qId[sizQVal] = i;
-        }
-      }
-      idVal.clear();
-      if (sizQVal == 0) {
-        return;
-      }
-    }
-    // 块状链表
-    const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
-    for (auto const block : iota(1, sizQVal + 1) | chunk(curBlock)) {
-      auto const blockR = min(block.front() + sizQVal - 1, sizQVal);
-      auto curR = blockR + 1;
-      for (auto const j : iota(1, vSize)) {
-        lPtr[j] = j, rPtr[j] = j;
-      } // 初始化链表
-      auto sum = 0LL;
-      auto link = [&] [[gnu::always_inline]] (int const i) {
-        sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - i + 1);
-        rPtr[lPtr[i]] = rPtr[i + 1];
-        lPtr[rPtr[i + 1]] = lPtr[i];
-      };
-      auto cut = [&]() {
-        while (!sta.empty()) {
-          auto const i = sta.top();
-          rPtr[lPtr[i]] = i;
-          lPtr[rPtr[i + 1]] = i + 1;
-          sta.pop();
-        }
-      };
-      for (auto const id : block) {
-        auto &curAns = ans[qId[id]];
-        const auto qUR = rUQ[id]; // 离散化后的询问右端点
-        const auto qUL = lUQ[id]; // 离散化后的询问左端点
-        if (qUR < blockR) {       // 在区间内
-          for (auto const i : iota(qUL, qUR + 1)) {
-            for (auto const &j : mnmxL[i]) {
-              if (j && mnmx[j][1] <= qUR) {
-                link(j), sta.emplace(j);
+      // 块状链表
+      const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
+      for (auto const block : iota(1, sizQVal + 1) | chunk(curBlock)) {
+        auto const blockR = min(block.front() + sizQVal - 1, sizQVal);
+        auto curR = blockR + 1;
+        for (auto const j : iota(1, vSize)) {
+          lPtr[j] = j, rPtr[j] = j;
+        } // 初始化链表
+        auto sum = 0LL;
+        auto link = [&] [[gnu::always_inline]] (int const i) {
+          sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - i + 1);
+          rPtr[lPtr[i]] = rPtr[i + 1];
+          lPtr[rPtr[i + 1]] = lPtr[i];
+        };
+        auto cut = [&]() {
+          while (!sta.empty()) {
+            auto const i = sta.top();
+            rPtr[lPtr[i]] = i;
+            lPtr[rPtr[i + 1]] = i + 1;
+            sta.pop();
+          }
+        };
+        for (auto const id : block) {
+          auto &curAns = ans[qId[id]];
+          const auto qUR = rUQ[id]; // 离散化后的询问右端点
+          const auto qUL = lUQ[id]; // 离散化后的询问左端点
+          if (qUR < blockR) {       // 在区间内
+            for (auto const i : iota(qUL, qUR + 1)) {
+              for (auto const &j : mnmxL[i]) {
+                if (j && mnmx[j][1] <= qUR) {
+                  link(j), sta.emplace(j);
+                }
               }
             }
-          }
-          curAns += sum, sum = 0, cut();
-        } else { // 在区间外
-          while (curR <= qUR) {
-            for (auto const &i : mnmxR[curR]) {
-              if (blockR < mnmx[i][0]) {
-                link(i);
+            curAns += sum, sum = 0, cut();
+          } else { // 在区间外
+            while (curR <= qUR) {
+              for (auto const &i : mnmxR[curR]) {
+                if (blockR < mnmx[i][0]) {
+                  link(i);
+                }
+              }
+              ++curR;
+            }
+            auto last = sum;
+            for (auto const i : iota(qUL, blockR + 1) | reverse) {
+              for (auto const &j : mnmxL[i]) {
+                if (qUL <= mnmx[j][0]) {
+                  link(j);
+                }
               }
             }
-            ++curR;
+            curAns += sum, sum = last, cut();
           }
-          auto last = sum;
-          for (auto const i : iota(qUL, blockR + 1) | reverse) {
-            for (auto const &j : mnmxL[i]) {
-              if (qUL <= mnmx[j][0]) {
-                link(j);
-              }
-            }
-          }
-          curAns += sum, sum = last, cut();
         }
+        lUQ.clear();
+        rUQ.clear();
       }
-      lUQ.clear();
-      rUQ.clear();
-    }
-  };
-  for (auto const i : iota(1, arrSize + 1)) {
-    if (aId[i].size() >= BlockSize) {
-      updGe(i);
     }
   }
   for (auto const &i : ans | drop(1)) {
@@ -354,7 +351,6 @@ auto main() noexcept -> int {
   try {
     solve();
   } catch (...) {
-    puts("error");
     return 0;
   }
 }
