@@ -217,57 +217,68 @@ auto solve() {
   }
   // 大于BlockSize的情况
   auto idVal = vector<int>();
+  auto lUQ = vector<int>();
+  auto rUQ = vector<int>();
   idVal.reserve(arrSize + 1);
+  lUQ.reserve(arrSize + 1);
+  rUQ.reserve(arrSize + 1);
+  auto lPtr = vector(arrSize + 1, 0);
+  auto rPtr = vector(arrSize + 1, 0);
+  auto qId = vector(qrySize + 1, 0);
   auto sta_mem = vector<int>();
   sta_mem.reserve(arrSize);
   auto sta = stack(std::move(sta_mem));
-  auto updGe = [&](int const &i) {
-    auto const &cur = aId[i];
-    auto const curSize = static_cast<int>(cur.size());
-    auto mnmx = vector(curSize - 1, array<int, 2>());
-    auto mnmxL = vector(curSize - 1, array<int, 2>());
-    auto mnmxR = vector(curSize - 1, array<int, 2>());
-    auto lTemp = vector(arrSize + 1, 0);
-    auto rTemp = vector(arrSize + 1, 0);
-    auto sizVal = 0;
-    auto sizQVal = 0;
+
+  auto updGe = [&](int const val) {
+    auto const &vId = aId[val]; // 所有val值的位置
+    auto const vSize = static_cast<int>(vId.size());
+    auto mnmx = vector(vSize - 1, array<int, 2>());
+    auto mnmxL = vector(vSize - 1, array<int, 2>());
+    auto mnmxR = vector(vSize - 1, array<int, 2>());
+    auto sizVal = 0;                            // 离散化的区间限制的个数
+    auto sizQVal = 0;                           // 满足条件的询问的个数
     {                                           // Init
-      auto visVal = vector(arrSize + 1, false); // 离散化
+      auto visVal = vector(arrSize + 1, false); // 被离散化的值
       auto lVal = vector(arrSize + 1, 0);
       auto rVal = vector(arrSize + 1, 0);
-      idVal.push_back(0);
-      for (auto const j : iota(0, curSize - 1)) {
-        mnmx[j] = stQry(cur[j], cur[j + 1]);
+      idVal.push_back(0); // 离散化的区间限制对应的原始值
+      for (auto const j : iota(0, vSize - 1)) {
+        // 使得点对vId[j]和vId[j+1]产生贡献所需要的限制
+        mnmx[j] = stQry(vId[j], vId[j + 1]);
+        // 离散化限制的值
         visVal[mnmx[j][0]] = true, visVal[mnmx[j][1]] = true;
       }
-      for (auto const j : iota(1, arrSize + 1)) {
-        if (visVal[j]) {
-          idVal.push_back(j), ++sizVal;
-          curSize lVal[sizVal] = j, rVal[sizVal] = j;
+      for (auto const i : iota(1, arrSize + 1)) {
+        if (visVal[i]) {
+          idVal.push_back(i), ++sizVal;
+          lVal[sizVal] = i, rVal[sizVal] = i;
         }
       }
-      for (auto const j : iota(1, arrSize + 1)) {
-        if (!lVal[j]) {
-          lVal[j] = j != 1 ? lVal[j - 1] : 0;
+      for (auto const i : iota(1, arrSize + 1)) {
+        if (!lVal[i]) { // 到可以向左扩展贡献的限制的指针
+          lVal[i] = i != 1 ? lVal[i - 1] : 0;
         }
       }
-      for (auto const j : iota(1, arrSize + 1) | reverse) {
-        if (!rVal[j]) {
-          rVal[j] = j != arrSize ? rVal[j + 1] : 0;
+      for (auto const i : iota(1, arrSize + 1) | reverse) {
+        if (!rVal[i]) { // 到可以向右扩展贡献的限制的指针
+          rVal[i] = i != arrSize ? rVal[i + 1] : 0;
         }
       }
-      for (auto j : iota(0, curSize - 1)) {
-        auto &l = mnmx[j][0];
-        auto &r = mnmx[j][1];
+      for (auto const i : iota(0, vSize - 1)) {
+        auto &l = mnmx[i][0];
+        auto &r = mnmx[i][1];
         l = lVal[l], r = rVal[r];
-        mnmxL[j][mnmx[j][0] != 0] = l;
-        mnmxR[j][mnmx[j][1] != 0] = r;
+        mnmxL[i][mnmx[i][0] != 0] = l;
+        mnmxR[i][mnmx[i][1] != 0] = r;
       }
-      for (auto const &j : qryArr) {
-        if (lQry[j] <= idVal[i] && idVal[1] <= rQry[j] &&
-            rVal[lQry[j]] <= lVal[rQry[j]]) {
+      for (auto const &i : qryArr) {
+        if (lQry[i] <= idVal[sizVal] &&
+            idVal[1] <= rQry[i] &&            // 在值为val的点限制的区间内
+            rVal[lQry[i]] <= lVal[rQry[i]]) { // 可以相交
           ++sizQVal;
-          lTemp[sizQVal] = rVal[lQry[j]], rTemp[sizQVal] = lVal[rQry[j]];
+          lUQ.emplace_back(rVal[lQry[i]]);
+          rUQ.emplace_back(lVal[rQry[i]]);
+          qId[sizQVal] = i;
         }
       }
       idVal.clear();
@@ -276,21 +287,62 @@ auto solve() {
       }
     }
     // 块状链表
-    auto lPtr = vector(curSize + 1, 0);
-    auto rPtr = vector(curSize + 1, 0);
     const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
     for (auto const block : iota(1, sizQVal + 1) | chunk(curBlock)) {
-      auto curR = min(block.front() + sizQVal - 1, sizQVal);
-      for (auto const j : iota(1, curSize)) {
+      auto const blockR = min(block.front() + sizQVal - 1, sizQVal);
+      auto curR = blockR + 1;
+      for (auto const j : iota(1, vSize)) {
         lPtr[j] = j, rPtr[j] = j;
-      }
+      } // 初始化链表
       auto sum = 0LL;
       auto link = [&] [[gnu::always_inline]] (int const i) {
         sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - i + 1);
         rPtr[lPtr[i]] = rPtr[i + 1];
         lPtr[rPtr[i + 1]] = lPtr[i];
-        sta.emplace(i);
       };
+      auto cut = [&]() {
+        while (!sta.empty()) {
+          auto const i = sta.top();
+          rPtr[lPtr[i]] = i;
+          lPtr[rPtr[i + 1]] = i + 1;
+          sta.pop();
+        }
+      };
+      for (auto const id : block) {
+        auto &curAns = ans[qId[id]];
+        const auto qUR = rUQ[id]; // 离散化后的询问右端点
+        const auto qUL = lUQ[id]; // 离散化后的询问左端点
+        if (qUR < blockR) {       // 在区间内
+          for (auto const i : iota(qUL, qUR + 1)) {
+            for (auto const &j : mnmxL[i]) {
+              if (j && mnmx[j][1] <= qUR) {
+                link(j), sta.emplace(j);
+              }
+            }
+          }
+          curAns += sum, sum = 0, cut();
+        } else { // 在区间外
+          while (curR <= qUR) {
+            for (auto const &i : mnmxR[curR]) {
+              if (blockR < mnmx[i][0]) {
+                link(i);
+              }
+            }
+            ++curR;
+          }
+          auto last = sum;
+          for (auto const i : iota(qUL, blockR + 1) | reverse) {
+            for (auto const &j : mnmxL[i]) {
+              if (qUL <= mnmx[j][0]) {
+                link(j);
+              }
+            }
+          }
+          curAns += sum, sum = last, cut();
+        }
+      }
+      lUQ.clear();
+      rUQ.clear();
     }
   };
   for (auto const i : iota(1, arrSize + 1)) {
@@ -303,7 +355,6 @@ auto solve() {
   }
 }
 } // namespace
-
 auto main() noexcept -> int {
   try {
     solve();
