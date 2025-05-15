@@ -28,14 +28,12 @@ inline void pc(char x) {                                            // NOLINT
       ? (*p3++ = x)                                                 // NOLINT
       : (fwrite(obuf, p3 - obuf, 1, stdout), p3 = obuf, *p3++ = x); // NOLINT
 }
-inline void write(int x) { // NOLINT
-  if (!x) {                // NOLINT
-    pc('0');               // NOLINT
-    return;                // NOLINT
+inline void write(long long x) { // NOLINT
+  if (!x) {                      // NOLINT
+    pc('0');                     // NOLINT
+    return;                      // NOLINT
   } // NOLINT
   int len = 0, k1 = x, c[40];          // NOLINT
-  if (k1 < 0)                          // NOLINT
-    k1 = -k1, pc('-');                 // NOLINT
   while (k1)                           // NOLINT
     c[len++] = k1 % 10 ^ 48, k1 /= 10; // NOLINT
   while (len--)                        // NOLINT
@@ -47,11 +45,13 @@ struct iofush { // NOLINT
   }
 } ioflush1; // NOLINT
 // 以上为快读快写
+#include <cmath>
 
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <ranges>
+#include <stack>
 #include <utility>
 #include <vector>
 
@@ -63,9 +63,11 @@ using std::array;
 using std::bit_width;
 using std::max;
 using std::min;
+using std::stack;
 using std::vector;
 using std::ranges::sort;
 using std::ranges::to;
+using std::views::chunk;
 using std::views::drop;
 using std::views::filter;
 using std::views::iota;
@@ -80,11 +82,11 @@ auto solve() {
   auto cnt = vector(arrSize + 1, 0);
   auto ans = vector(qrySize + 1, 0LL);
   for (int &i : a | drop(1)) {
-    i = read(), ++cnt1[i];
+    i = read(), ++cnt[i];
   }
   auto aId = vector(arrSize + 1, vector<int>());
   for (int i : iota(1, arrSize + 1)) {
-    aId[i].reserve(cnt1[i]), cnt1[i] = 0;
+    aId[i].reserve(cnt[i]), cnt[i] = 0;
   }
   for (int i : iota(1, arrSize + 1)) {
     aId[a[i]].push_back(i);
@@ -120,18 +122,20 @@ auto solve() {
   // ST表 end
   // 莫队 begin
   auto qryArr = iota(1, qrySize + 1) | to<vector>();
-  auto qryL = vector(qrySize + 1, 0);
-  auto qryR = vector(qrySize + 1, 0);
-  for (auto &&[l, r] : zip(qryL, qryR)) {
+  auto lQry = vector(qrySize + 1, 0);
+  auto rQry = vector(qrySize + 1, 0);
+  for (auto &&[l, r] : zip(lQry, rQry)) {
     l = read(), r = read(), ++cnt[l];
   }
   sort(qryArr,
-       [&qryR](int const &i, int const &j) { return qryR[i] < qryR[j]; });
+       [&rQry](int const &i, int const &j) { return rQry[i] < rQry[j]; });
   auto lId = vector(arrSize + 1, vector<int>());
   for (int i : iota(1, arrSize + 1)) {
     lId[i].reserve(cnt[i]), cnt[i] = 0;
   }
-  for (auto)
+  for (auto i = 1; auto const &l : lQry) {
+    lId[l].emplace_back(i), ++i;
+  }
   // 莫队 end
   // 小于BlockSize的情况
   {
@@ -144,20 +148,16 @@ auto solve() {
     };
     auto sumQry = [&](int const i) {
       auto res = 0;
-      for (auto k : iota((i >> 6) << 6, i + 1)) {
+      for (auto const k : iota((i >> 6) << 6, i + 1)) {
         res += sum1[k];
       }
-      for (auto k : iota((i >> 12) << 6, i >> 6)) {
+      for (auto const k : iota((i >> 12) << 6, i >> 6)) {
         res += sum2[k];
       }
-      for (auto k : iota(0, i >> 12)) {
+      for (auto const k : iota(0, i >> 12)) {
         res += sum3[k];
       }
       return res;
-    };
-    auto sumGet = [&sumQry] [[gnu::always_inline]] (int const &l,
-                                                    int const &r) {
-      return sumQry(r) - sumQry(l - 1);
     };
     // 立方根分块前缀和 end
     auto viewLe = iota(1, arrSize) | filter([&](int const &i) {
@@ -166,11 +166,11 @@ auto solve() {
     auto curRange = vector(arrSize + 1, vector<array<int, 2>>());
     auto lastMin = vector(arrSize + 1, vector<int>());
     auto rk = vector(arrSize + 1, 0);
-    for (auto i : viewLe) {
+    for (auto const i : viewLe) {
       auto const &cur = aId[i];
       auto const curSize = static_cast<int>(cur.size());
       curRange[i].reserve(curSize);
-      for (auto j : iota(0, curSize)) {
+      for (auto const j : iota(0, curSize)) {
         rk[cur[j]] = j;
         if (j != curSize - 1) {
           auto res = stQry(cur[j], cur[j + 1]);
@@ -179,32 +179,125 @@ auto solve() {
         }
       }
     }
-    for (auto i : iota(1, arrSize + 1)) {
+    for (auto const i : iota(1, arrSize + 1)) {
       lastMin[i].reserve(cnt[i]);
     }
-    for (auto i : viewLe) {
+    for (auto const i : viewLe) {
       auto const &cur = aId[i];
       auto const curSize = static_cast<int>(cur.size());
-      for (auto j : iota(0, curSize - 1)) {
+      for (auto const j : iota(0, curSize - 1)) {
         lastMin[stQry(cur[j], cur[j + 1])[0]].emplace_back(i);
       }
     }
-    for (auto i : iota(1, arrSize + 1) | reverse) {
-      for (auto j : lastMin[i]) {
-        auto const val = a[j];
-        auto const curRk = rk[j];
-        auto const curSize = static_cast<int>(curRange[val].size());
+    auto updLe = [&](int const &i) {
+      for (auto const &id : lastMin[i]) {
+        auto const val = a[id];
+        auto const curRk = rk[id];
         auto const &cur = curRange[val];
-        for (auto mx = 0; auto l : iota(0, cur[curRk][1] + 1) | reverse) {
+        for (auto mx1 = 0; auto l : iota(0, cur[curRk][1] + 1) | reverse) {
+          if (l < curRk && cur[l][0] <= i) {
+            break;
+          }
+          mx1 = max(mx1, cur[l][0]);
+          for (auto mx2 = mx1; auto &&[mnR, mxR] : cur | drop(curRk)) {
+            if (mnR <= i) {
+              break;
+            }
+            mx2 = max(mx2, mxR), sumUpd(mx2);
+          }
         }
       }
-      for (int const &j : lId[i]) {
-        ans[j] += sumQry(qryR[j]);
+      for (auto const &id : lId[i]) {
+        ans[id] += sumQry(rQry[id]);
       }
+    };
+    for (auto i : iota(1, arrSize + 1) | reverse) {
+      updLe(i);
     }
   }
-
   // 大于BlockSize的情况
+  auto idVal = vector<int>();
+  idVal.reserve(arrSize + 1);
+  auto sta_mem = vector<int>();
+  sta_mem.reserve(arrSize);
+  auto sta = stack(std::move(sta_mem));
+  auto updGe = [&](int const &i) {
+    auto const &cur = aId[i];
+    auto const curSize = static_cast<int>(cur.size());
+    auto mnmx = vector(curSize - 1, array<int, 2>());
+    auto mnmxL = vector(curSize - 1, array<int, 2>());
+    auto mnmxR = vector(curSize - 1, array<int, 2>());
+    auto lTemp = vector(arrSize + 1, 0);
+    auto rTemp = vector(arrSize + 1, 0);
+    auto sizVal = 0;
+    auto sizQVal = 0;
+    { // Init
+      auto visVal = vector(arrSize + 1, false);
+      auto lVal = vector(arrSize + 1, 0);
+      auto rVal = vector(arrSize + 1, 0);
+      idVal.push_back(0);
+      for (auto const j : iota(0, curSize - 1)) {
+        mnmx[j] = stQry(cur[j], cur[j + 1]);
+        visVal[mnmx[j][0]] = true, visVal[mnmx[j][1]] = true;
+      }
+      for (auto const j : iota(1, arrSize + 1)) {
+        if (visVal[j]) {
+          idVal.push_back(j), ++sizVal;
+          lVal[sizVal] = j, rVal[sizVal] = j;
+        }
+      }
+      for (auto const j : iota(1, arrSize + 1)) {
+        if (!visVal[j]) {
+          lVal[j] = lVal[j - 1];
+        }
+      }
+      for (auto const j : iota(1, arrSize + 1) | reverse) {
+        if (!visVal[j]) {
+          rVal[j] = rVal[j + 1];
+        }
+      }
+      idVal.clear();
+      for (auto j : iota(0, curSize - 1)) {
+        auto &l = mnmx[j][0];
+        auto &r = mnmx[j][1];
+        l = lVal[l], r = rVal[r];
+        mnmxL[j][mnmx[j][0] != 0] = l;
+        mnmxR[j][mnmx[j][1] != 0] = r;
+      }
+      for (auto const &j : qryArr) {
+        if (lQry[j] <= idVal[i] && idVal[1] <= rQry[j] &&
+            rVal[lQry[j]] <= lVal[rQry[j]]) {
+          ++sizQVal;
+          lTemp[sizQVal] = rVal[lQry[j]], rTemp[sizQVal] = lVal[rQry[j]];
+        }
+      }
+      if (sizQVal == 0) {
+        return;
+      }
+    }
+    // 块状链表
+    auto lBlock = vector(curSize + 1, 0);
+    auto rBlock = vector(curSize + 1, 0);
+    const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
+    auto getcurBlock = [&](int const &i) { return ((i - 1) / curBlock) + 1; };
+    auto link = [&](int const &i) {
+      int64_t res = 1LL * (i - lBlock[i] + 1) * (rBlock[i + 1] - i + 1);
+      rBlock[lBlock[i]] = rBlock[i + 1];
+      lBlock[rBlock[i + 1]] = lBlock[i];
+      sta.emplace(i);
+      return res;
+    };
+    for (auto const curblock : iota(1, sizQVal + 1) | chunk(curBlock)) {
+    }
+  };
+  for (auto const i : iota(1, arrSize + 1)) {
+    if (aId[i].size() >= BlockSize) {
+      updGe(i);
+    }
+  }
+  for (auto const &i : ans | drop(1)) {
+    write(i), pc('\n');
+  }
 }
 } // namespace
 
