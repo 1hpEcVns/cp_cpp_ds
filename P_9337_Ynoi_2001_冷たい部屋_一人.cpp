@@ -55,6 +55,9 @@ struct iofush { // NOLINT
 #include <vector>
 
 // 综合考察了分块 离散化 回滚莫队 块状链表 ST表
+// 询问采用0-indexed 序列采用1-indexed
+// 这次尝试了使用std::views::chunk来分块
+// 所有的数据都采用动态内存分配
 
 namespace {
 using std::array;
@@ -71,14 +74,14 @@ using std::views::filter;
 using std::views::iota;
 using std::views::reverse;
 using std::views::zip;
-constexpr int BlockSize = 3000;
+constexpr int BlockSize = 1;
 auto solve() {
   // 读入a数组并建立a_id映射
   auto arrSize = read();
   auto qrySize = read();
   auto a = vector(arrSize + 1, 0);
   auto cnt = vector(max(arrSize, qrySize) + 1, 0);
-  auto ans = vector(qrySize + 1, 0LL);
+  auto ans = vector(qrySize, 0LL);
   for (int &i : a | drop(1)) {
     i = read(), ++cnt[i];
   }
@@ -118,10 +121,10 @@ auto solve() {
     return minmaxUpd(st[k][l], st[k][r - (1 << k) + 1]);
   };
   // ST表 end
-  auto qryArr = iota(1, qrySize + 1) | to<vector>();
-  auto lQry = vector(qrySize + 1, 0);
-  auto rQry = vector(qrySize + 1, 0);
-  for (auto &&[l, r] : zip(lQry, rQry) | drop(1)) {
+  auto qryArr = iota(0, qrySize) | to<vector>();
+  auto lQry = vector(qrySize, 0);
+  auto rQry = vector(qrySize, 0);
+  for (auto &&[l, r] : zip(lQry, rQry)) {
     l = read(), r = read(), ++cnt[l];
   }
   sort(qryArr,
@@ -132,8 +135,8 @@ auto solve() {
     for (int i : iota(1, arrSize + 1)) {
       lId[i].reserve(cnt[i]), cnt[i] = 0;
     }
-    for (auto i = 1; auto const &l : lQry | drop(1)) {
-      lId[l].emplace_back(i),++i;
+    for (auto i = 0; auto const &l : lQry) {
+      lId[l].emplace_back(i), ++i;
     }
     // 立方根分块前缀和 begin
     auto sum1 = vector(arrSize + 1, 0);
@@ -230,9 +233,9 @@ auto solve() {
     if (aId[val].size() >= BlockSize) {
       auto const &vId = aId[val]; // 所有val值的位置
       auto const vSize = static_cast<int>(vId.size());
-      auto mnmx = vector(vSize - 1, array<int, 2>());
-      auto mnmxL = vector(vSize - 1, array<int, 2>());
-      auto mnmxR = vector(vSize - 1, array<int, 2>());
+      auto mnmx = vector(vSize * 2 + 1, array<int, 2>());
+      auto mnmxL = vector(vSize * 2 + 1, array<int, 2>());
+      auto mnmxR = vector(vSize * 2 + 1, array<int, 2>());
       auto sizVal = 0;                            // 离散化的区间限制的个数
       auto sizQVal = 0;                           // 满足条件的询问的个数
       {                                           // Init
@@ -249,7 +252,7 @@ auto solve() {
         for (auto const i : iota(1, arrSize + 1)) {
           if (visVal[i]) {
             idVal.push_back(i), ++sizVal;
-            lVal[sizVal] = i, rVal[sizVal] = i;
+            lVal[i] = sizVal, rVal[i] = sizVal;
           }
         }
         for (auto const i : iota(1, arrSize + 1)) {
@@ -266,35 +269,34 @@ auto solve() {
           auto &l = mnmx[i][0];
           auto &r = mnmx[i][1];
           l = lVal[l], r = rVal[r];
-          mnmxL[i][mnmxL[i][0] != 0] = l;
-          mnmxR[i][mnmxR[i][1] != 0] = r;
+          mnmxL[l][mnmxL[l][0] != 0] = i;
+          mnmxR[r][mnmxR[r][0] != 0] = i;
         }
         for (auto const &i : qryArr) {
           if (lQry[i] <= idVal[sizVal] &&
               idVal[1] <= rQry[i] &&            // 在值为val的点限制的区间内
               rVal[lQry[i]] <= lVal[rQry[i]]) { // 可以相交
-            ++sizQVal;
             lUQ.emplace_back(rVal[lQry[i]]);
             rUQ.emplace_back(lVal[rQry[i]]);
-            qId[sizQVal] = i;
+            qId[sizQVal++] = i;
           }
         }
         idVal.clear();
         if (sizQVal == 0) {
-          return;
+          continue;
         }
       }
       // 块状链表
       const auto curBlock = static_cast<int>(sizVal / sqrt(sizQVal)) + 1;
-      for (auto const block : iota(1, sizQVal + 1) | chunk(curBlock)) {
-        auto const blockR = min(block.front() + sizQVal - 1, sizQVal);
+      for (auto const block : iota(0, sizQVal) | chunk(curBlock)) {
+        auto const blockR = min(block.front() + curBlock, sizQVal) - 1;
         auto curR = blockR + 1;
-        for (auto const j : iota(1, vSize)) {
-          lPtr[j] = j, rPtr[j] = j;
+        for (auto const i : iota(1, vSize)) {
+          lPtr[i] = i, rPtr[i] = i;
         } // 初始化链表
         auto sum = 0LL;
         auto link = [&] [[gnu::always_inline]] (int const i) {
-          sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - i + 1);
+          sum += 1LL * (i - lPtr[i] + 1) * (rPtr[i + 1] - (i + 1) + 1);
           rPtr[lPtr[i]] = rPtr[i + 1];
           lPtr[rPtr[i + 1]] = lPtr[i];
         };
@@ -307,12 +309,13 @@ auto solve() {
           }
         };
         for (auto const id : block) {
-          auto &curAns = ans[qId[id]];
-          const auto qUR = rUQ[id]; // 离散化后的询问右端点
-          const auto qUL = lUQ[id]; // 离散化后的询问左端点
-          if (qUR < blockR) {       // 在区间内
+          const auto qid = qId[id]; // 原本询问的id
+          auto &curAns = ans[qid];
+          const auto qUR = rUQ[qid]; // 离散化后的询问右端点
+          const auto qUL = lUQ[qid]; // 离散化后的询问左端点
+          if (qUR < blockR) {        // 在区间内
             for (auto const i : iota(qUL, qUR + 1)) {
-              for (auto const &j : mnmxL[i]) {
+              for (auto const &j : mnmxL.at(i)) {
                 if (j && mnmx[j][1] <= qUR) {
                   link(j), sta.emplace(j);
                 }
@@ -339,12 +342,12 @@ auto solve() {
             curAns += sum, sum = last, cut();
           }
         }
-        lUQ.clear();
-        rUQ.clear();
       }
+      lUQ.clear();
+      rUQ.clear();
     }
   }
-  for (auto const &i : ans | drop(1)) {
+  for (auto const &i : ans) {
     write(i), pc('\n');
   }
 }
@@ -352,7 +355,8 @@ auto solve() {
 auto main() noexcept -> int {
   try {
     solve();
-  } catch (...) {
+  } catch (std::exception &e) {
+    puts(e.what());
     return 0;
   }
 }
